@@ -151,6 +151,8 @@
 <footer>SANITATION OPS · SHARED GPS FEED · KEEP SCREEN ON WHILE ON SHIFT</footer>
 
 <script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxNRiG-GksPRnJ8l9Kl5CtTArbM1jdv8PR35u4DXk8r57L1FGwdO1YuY1NF_xTSlkalPQ/exec";
+
 const setupPanel = document.getElementById('setupPanel');
 const statusPanel = document.getElementById('statusPanel');
 const startBtn = document.getElementById('startBtn');
@@ -180,7 +182,11 @@ async function pushLocation(){
     status: "active"
   };
   try{
-    await window.storage.set(`driver:${vehicleId}`, JSON.stringify(payload), true);
+    await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
     document.getElementById('sLast').textContent = fmtTime();
     document.getElementById('sGps').textContent = "සම්බන්ධයි";
     document.getElementById('sGps').className = "v good";
@@ -247,7 +253,11 @@ stopBtn.addEventListener('click', async ()=>{
         updatedAt: Date.now(),
         status: "offline"
       };
-      await window.storage.set(`driver:${vehicleId}`, JSON.stringify(payload), true);
+      await fetch(API_URL, {
+        method: "POST",
+        headers: {"Content-Type": "text/plain;charset=utf-8"},
+        body: JSON.stringify(payload)
+      });
     }catch(err){ console.error(err); }
   }
   statusPanel.classList.remove('live');
