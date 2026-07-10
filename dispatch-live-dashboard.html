@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<title>කසළ එකතු කිරීමේ මධ්‍යස්ථානය — සජීවී GPS අධීක්ෂණය</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --asphalt:#1c2321;
+    --asphalt-2:#242b28;
+    --paper:#eeeee6;
+    --paper-dim:#c9c9bd;
+    --line:#3a423e;
+    --green:#4c9a4c;
+    --green-dim:#2e5c34;
+    --amber:#e8a33d;
+    --amber-dim:#7a5a22;
+    --teal:#3f9c94;
+    --orange:#d65a31;
+    --gray:#5a635e;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:var(--asphalt);
+    color:var(--paper);
+    font-family:'Noto Sans Sinhala','IBM Plex Mono',sans-serif;
+    min-height:100vh;
+  }
+
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 22px;
+    background:repeating-linear-gradient(135deg,var(--asphalt-2) 0 10px,#20261f 10px 20px);
+    border-bottom:3px solid var(--amber);
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:38px; height:38px; border:2px solid var(--amber); border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Narrow',sans-serif; font-weight:700; font-size:18px; color:var(--amber);
+    transform:rotate(-2deg);
+  }
+  .brand h1{font-size:16px; font-weight:600; letter-spacing:0.02em;}
+  .brand span{display:block; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--paper-dim); letter-spacing:0.08em; margin-top:2px;}
+  .clock{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--amber); text-align:right;}
+  .clock .date{color:var(--paper-dim); font-size:10.5px; display:block;}
+
+  .layout{
+    display:grid;
+    grid-template-columns: 320px 1fr;
+    gap:1px;
+    background:var(--line);
+  }
+  @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+  .side{ background:var(--asphalt); padding:16px 14px 30px; display:flex; flex-direction:column; gap:14px; }
+  .stat-row{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .stat{ border:1px solid var(--line); border-radius:3px; padding:8px 10px; background:var(--asphalt-2); }
+  .stat b{display:block; font-size:22px; font-family:'IBM Plex Mono',monospace;}
+  .stat small{font-size:9.5px; color:var(--paper-dim); letter-spacing:0.06em; text-transform:uppercase;}
+  .stat.green b{color:var(--green);}
+  .stat.amber b{color:var(--amber);}
+  .stat.teal b{color:var(--teal);}
+
+  .section-label{
+    font-family:'Archivo Narrow',sans-serif; font-size:12px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--paper-dim);
+    border-bottom:1px solid var(--line); padding-bottom:6px; margin-top:4px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+
+  .zone-list{display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; padding-right:2px;}
+  .zone-item{
+    border:1px solid var(--line); border-left:4px solid var(--line);
+    border-radius:2px; padding:7px 9px; cursor:pointer;
+    background:var(--asphalt-2); transition:border-color .15s, background .15s;
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .zone-item:hover{background:#2a322c;}
+  .zone-item.status-pending{border-left-color:var(--amber);}
+  .zone-item.status-done{border-left-color:var(--green);}
+  .zone-item.status-active{border-left-color:var(--teal); box-shadow:0 0 0 1px var(--teal) inset;}
+  .zone-name{font-size:12.5px; font-weight:500;}
+  .zone-meta{font-size:9.5px; color:var(--paper-dim); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+  .badge{ font-family:'IBM Plex Mono',monospace; font-size:9px; padding:2px 6px; border-radius:2px; letter-spacing:0.05em; white-space:nowrap; }
+  .badge.pending{background:var(--amber-dim); color:var(--amber);}
+  .badge.done{background:var(--green-dim); color:var(--green);}
+  .badge.active{background:#1e4a46; color:var(--teal);}
+
+  .vehicle-list{display:flex; flex-direction:column; gap:8px;}
+  .vehicle-card{ border:1px solid var(--line); border-radius:3px; padding:9px 10px; background:var(--asphalt-2); }
+  .vehicle-card.offline{opacity:0.55;}
+  .vehicle-top{display:flex; justify-content:space-between; align-items:center;}
+  .vehicle-id{font-weight:600; font-size:12.5px; display:flex; align-items:center; gap:6px;}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+  .dot.live{background:var(--teal); box-shadow:0 0 6px var(--teal);}
+  .dot.off{background:var(--gray);}
+  .vehicle-gps{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--teal); margin-top:5px;}
+  .vehicle-meta{font-size:10px; color:var(--paper-dim); margin-top:4px; font-family:'IBM Plex Mono',monospace;}
+
+  .map-wrap{background:var(--asphalt); padding:16px; position:relative;}
+  .map-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+  .map-head h2{font-family:'Archivo Narrow',sans-serif; font-size:14px; letter-spacing:0.08em; text-transform:uppercase; color:var(--paper-dim);}
+  .legend{display:flex; gap:14px; font-size:10px; color:var(--paper-dim); font-family:'IBM Plex Mono',monospace;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend i{width:9px; height:9px; border-radius:50%; display:inline-block;}
+
+  svg{width:100%; height:auto; display:block; border:1px solid var(--line); border-radius:4px; background:
+      linear-gradient(var(--asphalt-2) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, var(--asphalt-2) 1px, transparent 1px) 0 0/40px 40px,
+      #171c1a;
+  }
+  .zone-node{cursor:pointer;}
+  .zone-node circle.ring{fill:none; stroke-width:2;}
+  .zone-node text{font-family:'IBM Plex Mono',monospace; font-size:9px; fill:var(--paper-dim);}
+  .veh-marker text{font-family:'IBM Plex Mono',monospace; font-size:8.5px; fill:var(--teal);}
+
+  .tooltip{
+    position:absolute; background:var(--asphalt-2); border:1px solid var(--amber);
+    padding:8px 10px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
+    pointer-events:none; display:none; z-index:10; max-width:220px; line-height:1.5;
+  }
+  .tooltip b{color:var(--amber); font-family:'Noto Sans Sinhala'; display:block; margin-bottom:3px;}
+
+  .empty-note{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--paper-dim);
+    border:1px dashed var(--line); border-radius:4px; padding:10px; line-height:1.6;
+  }
+
+  footer{
+    text-align:center; padding:10px; font-size:9.5px; color:var(--paper-dim);
+    font-family:'IBM Plex Mono',monospace; letter-spacing:0.04em; grid-column:1/-1;
+    background:var(--asphalt); border-top:1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">ක</div>
+    <div>
+      <h1>කසළ එකතු කිරීමේ මධ්‍යස්ථානය</h1>
+      <span>WASTE COLLECTION FLEET · LIVE DRIVER GPS FEED</span>
+    </div>
+  </div>
+  <div class="clock">
+    <span class="date" id="dateStr">—</span>
+    <span id="timeStr">—:—:—</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="side">
+    <div class="stat-row">
+      <div class="stat"><b id="totalZones">0</b><small>මුළු ස්ථාන</small></div>
+      <div class="stat green"><b id="doneZones">0</b><small>රැස් කළ</small></div>
+      <div class="stat amber"><b id="pendingZones">0</b><small>පොරොත්තු</small></div>
+      <div class="stat teal"><b id="liveVeh">0</b><small>සජීවී වාහන</small></div>
+    </div>
+
+    <div>
+      <div class="section-label">බල ප්‍රදේශයේ ස්ථාන <span>ZONE B — COLOMBO</span></div>
+      <div class="zone-list" id="zoneList"></div>
+    </div>
+
+    <div>
+      <div class="section-label">වාහන · සජීවී GPS</div>
+      <div class="vehicle-list" id="vehicleList"></div>
+      <p class="empty-note" id="emptyNote" style="margin-top:8px; display:none;">
+        තවම කිසිම රියදුරෙක් tracking ආරම්භ කර නැත. රියදුරු GPS පිටුව (driver-tracker.html) විවෘත කර "දිශාව ලුහුබැඳීම අරඹන්න" ඔබන්න.
+      </p>
+    </div>
+  </div>
+
+  <div class="map-wrap">
+    <div class="map-head">
+      <h2>සජීවී මාර්ග සිතියම</h2>
+      <div class="legend">
+        <span><i style="background:var(--amber)"></i>පොරොත්තුවෙන්</span>
+        <span><i style="background:var(--green)"></i>රැස් කරන ලදී</span>
+        <span><i style="background:var(--teal)"></i>සජීවී වාහන</span>
+      </div>
+    </div>
+    <svg viewBox="0 0 900 560" id="mapSvg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <footer>SANITATION OPS DASHBOARD · READING SHARED GPS FEED · POLLS EVERY 5S</footer>
+</div>
+
+<script>
+/* ---------------- ZONE DATA ---------------- */
+const zones = [
+  {id:"Z01", name:"බොරැල්ල මධ්‍ය කලාපය", x:150, y:120, lat:6.9147, lng:79.8730, status:"done", last:"07:12"},
+  {id:"Z02", name:"රාජගිරිය හන්දිය", x:300, y:90,  lat:6.9095, lng:79.8925, status:"done", last:"07:28"},
+  {id:"Z03", name:"කොටහේන පොළ ප්‍රදේශය", x:120, y:260, lat:6.9403, lng:79.8590, status:"pending", last:"—"},
+  {id:"Z04", name:"මාලිගාවත්ත වෙළඳ මාර්ගය", x:260, y:250, lat:6.9310, lng:79.8680, status:"pending", last:"—"},
+  {id:"Z05", name:"කිරුළපන ප්‍රධාන පාර", x:420, y:200, lat:6.8890, lng:79.8770, status:"pending", last:"—"},
+  {id:"Z06", name:"වැල්ලවත්ත වෙරළ පාර", x:520, y:320, lat:6.8710, lng:79.8600, status:"pending", last:"—"},
+  {id:"Z07", name:"නාරාහේන්පිට කලාපය", x:400, y:400, lat:6.8790, lng:79.8620, status:"done", last:"06:50"},
+  {id:"Z08", name:"දෙහිවල නගර මධ්‍යය", x:560, y:470, lat:6.8560, lng:79.8650, status:"pending", last:"—"},
+  {id:"Z09", name:"මුල්ලේරියාව හන්දිය", x:680, y:150, lat:6.9200, lng:79.9280, status:"pending", last:"—"},
+  {id:"Z10", name:"කොළඹ කොටුව", x:80, y:400, lat:6.9350, lng:79.8430, status:"pending", last:"—"},
+];
+
+const API_URL = "https://script.google.com/macros/s/AKfycbxNRiG-GksPRnJ8l9Kl5CtTArbM1jdv8PR35u4DXk8r57L1FGwdO1YuY1NF_xTSlkalPQ/exec";
+
+// vehicles the dispatcher expects to see (must match IDs used on the driver page)
+const knownVehicleIds = ["WM-04", "WM-11", "WM-07", "WM-15"];
+const OFFLINE_AFTER_MS = 2 * 60 * 1000; // mark offline if no update in 2 min
+
+/* ---------------- COORD MAPPING (svg <-> lat/lng, same projection as driver page area) ---------------- */
+function latLngToSvg(lat, lng){
+  const y = (6.95 - lat) / 0.11 * 560;
+  const x = (lng - 79.83) / 0.11 * 900;
+  return {
+    x: Math.max(20, Math.min(880, x)),
+    y: Math.max(20, Math.min(540, y))
+  };
+}
+
+/* ---------------- ZONE LIST + STATS ---------------- */
+const zoneListEl = document.getElementById('zoneList');
+function statusLabel(s){
+  return s === "done" ? "රැස් කළා" : s === "active" ? "මාර්ගයේ" : "පොරොත්තුවෙන්";
+}
+function renderZoneList(){
+  zoneListEl.innerHTML = "";
+  zones.forEach(z=>{
+    const div = document.createElement('div');
+    div.className = `zone-item status-${z.status}`;
+    div.innerHTML = `
+      <div>
+        <div class="zone-name">${z.name}</div>
+        <div class="zone-meta">${z.id} · ${z.lat.toFixed(4)}, ${z.lng.toFixed(4)}</div>
+      </div>
+      <span class="badge ${z.status === 'done' ? 'done' : z.status === 'active' ? 'active' : 'pending'}">${statusLabel(z.status)}</span>
+    `;
+    div.addEventListener('mouseenter', (e)=>showTip(e, `<b>${z.name}</b>${z.id} · තත්ත්වය: ${statusLabel(z.status)}<br>${z.lat.toFixed(4)}°N, ${z.lng.toFixed(4)}°E`));
+    div.addEventListener('mouseleave', hideTip);
+    zoneListEl.appendChild(div);
+  });
+}
+function renderStats(liveCount){
+  document.getElementById('totalZones').textContent = zones.length;
+  document.getElementById('doneZones').textContent = zones.filter(z=>z.status==='done').length;
+  document.getElementById('pendingZones').textContent = zones.filter(z=>z.status==='pending').length;
+  document.getElementById('liveVeh').textContent = liveCount;
+}
+
+/* ---------------- SVG MAP SETUP ---------------- */
+const svg = document.getElementById('mapSvg');
+const NS = "http://www.w3.org/2000/svg";
+function mkEl(tag, attrs){
+  const el = document.createElementNS(NS, tag);
+  for(const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+const zoneCircles = {};
+zones.forEach(z=>{
+  const g = mkEl('g', {class:"zone-node"});
+  const color = z.status === 'done' ? 'var(--green)' : z.status === 'active' ? 'var(--teal)' : 'var(--amber)';
+  const ring = mkEl('circle', {class:"ring", cx:z.x, cy:z.y, r:14, stroke:color});
+  const dot = mkEl('circle', {cx:z.x, cy:z.y, r:6, fill:color});
+  const label = mkEl('text', {x:z.x, y:z.y-20, "text-anchor":"middle"});
+  label.textContent = z.id;
+  g.appendChild(ring); g.appendChild(dot); g.appendChild(label);
+  g.addEventListener('mouseenter', (e)=>showTip(e, `<b>${z.name}</b>${z.id} · තත්ත්වය: ${statusLabel(z.status)}<br>${z.lat.toFixed(4)}°N, ${z.lng.toFixed(4)}°E`));
+  g.addEventListener('mousemove', positionTip);
+  g.addEventListener('mouseleave', hideTip);
+  svg.appendChild(g);
+  zoneCircles[z.id] = ring;
+});
+
+// vehicle marker pool (created/removed dynamically as drivers go live/offline)
+const vehGroups = {};
+function ensureVehicleMarker(id){
+  if(vehGroups[id]) return vehGroups[id];
+  const g = mkEl('g', {class:"veh-marker"});
+  const halo = mkEl('circle', {r:12, fill:"var(--teal)", opacity:0.2});
+  const tri = mkEl('circle', {r:7, fill:"var(--teal)"});
+  const label = mkEl('text', {x:12, y:4});
+  label.textContent = id;
+  g.appendChild(halo); g.appendChild(tri); g.appendChild(label);
+  svg.appendChild(g);
+  vehGroups[id] = g;
+  return g;
+}
+function removeVehicleMarker(id){
+  if(vehGroups[id]){ svg.removeChild(vehGroups[id]); delete vehGroups[id]; }
+}
+
+/* ---------------- TOOLTIP ---------------- */
+const tip = document.getElementById('tooltip');
+const mapWrap = document.querySelector('.map-wrap');
+function showTip(e, html){ tip.style.display = 'block'; tip.innerHTML = html; positionTip(e); }
+function positionTip(e){
+  const rect = mapWrap.getBoundingClientRect();
+  tip.style.left = (e.clientX - rect.left + 14) + "px";
+  tip.style.top = (e.clientY - rect.top + 10) + "px";
+}
+function hideTip(){ tip.style.display = 'none'; }
+
+/* ---------------- VEHICLE CARDS + LIVE POLL ---------------- */
+const vehListEl = document.getElementById('vehicleList');
+const emptyNote = document.getElementById('emptyNote');
+
+function timeAgo(ts){
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s < 60) return s + "s ago";
+  return Math.round(s/60) + "m ago";
+}
+
+async function pollDrivers(){
+  let liveCount = 0;
+  let anyEverSeen = false;
+  const cards = [];
+
+  let driverRows = [];
+  try{
+    const res = await fetch(API_URL, {cache:"no-store"});
+    driverRows = await res.json();
+  }catch(err){
+    console.error("fetch error", err);
+  }
+
+  for(const vid of knownVehicleIds){
+    const raw = driverRows.find(r => r.vehicleId === vid);
+    const data = raw ? {
+      vehicleId: raw.vehicleId,
+      driverName: raw.driverName,
+      lat: raw.lat === "" ? null : Number(raw.lat),
+      lng: raw.lng === "" ? null : Number(raw.lng),
+      accuracy: raw.accuracy === "" ? null : Number(raw.accuracy),
+      updatedAt: Number(raw.updatedAt),
+      status: raw.status
+    } : null;
+
+    if(!data){ removeVehicleMarker(vid); continue; }
+    anyEverSeen = true;
+
+    const isFresh = data.status === "active" && (Date.now() - data.updatedAt) < OFFLINE_AFTER_MS;
+    if(isFresh){
+      liveCount++;
+      ensureVehicleMarker(vid);
+      if(data.lat != null && data.lng != null){
+        const p = latLngToSvg(data.lat, data.lng);
+        vehGroups[vid].setAttribute('transform', `translate(${p.x},${p.y})`);
+      }
+    }else{
+      removeVehicleMarker(vid);
+    }
+
+    cards.push({vid, data, isFresh});
+  }
+
+  emptyNote.style.display = anyEverSeen ? "none" : "block";
+
+  vehListEl.innerHTML = "";
+  cards.forEach(({vid, data, isFresh})=>{
+    const card = document.createElement('div');
+    card.className = "vehicle-card" + (isFresh ? "" : " offline");
+    card.innerHTML = `
+      <div class="vehicle-top">
+        <span class="vehicle-id"><span class="dot ${isFresh?'live':'off'}"></span>${vid}</span>
+        <span style="font-size:10px;color:var(--paper-dim)">${data.driverName || '—'}</span>
+      </div>
+      <div class="vehicle-gps">${data.lat!=null ? data.lat.toFixed(5)+"°N, "+data.lng.toFixed(5)+"°E" : "GPS නොමැත"}</div>
+      <div class="vehicle-meta">${isFresh ? "සජීවී · " : "නොබැඳී · "}${timeAgo(data.updatedAt)}${data.accuracy ? " · ±"+Math.round(data.accuracy)+"m" : ""}</div>
+    `;
+    vehListEl.appendChild(card);
+  });
+
+  renderStats(liveCount);
+}
+
+/* ---------------- CLOCK ---------------- */
+const dayNames = ["ඉරිදා","සඳුදා","අඟහරුවාදා","බදාදා","බ්‍රහස්පතින්දා","සිකුරාදා","සෙනසුරාදා"];
+function tickClock(){
+  const now = new Date();
+  document.getElementById('timeStr').textContent = now.toLocaleTimeString('en-GB');
+  document.getElementById('dateStr').textContent = `${dayNames[now.getDay()]} · ${now.toLocaleDateString('en-CA')}`;
+}
+
+/* ---------------- INIT ---------------- */
+renderZoneList();
+renderStats(0);
+tickClock();
+setInterval(tickClock, 1000);
+pollDrivers();
+setInterval(pollDrivers, 5000);
+</script>
+</body>
+</html>
