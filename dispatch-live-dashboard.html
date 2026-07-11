@@ -222,7 +222,8 @@
 <script>
 /* ---------------- CONFIG ---------------- */
 const API_URL = "https://script.google.com/macros/s/AKfycbxNRiG-GksPRnJ8l9Kl5CtTArbM1jdv8PR35u4DXk8r57L1FGwdO1YuY1NF_xTSlkalPQ/exec";
-const knownVehicleIds = ["WM-04", "WM-11", "WM-07", "WM-15"];
+// vehicle IDs are no longer fixed — any vehicle ID a driver types on the driver page
+// will automatically appear here once it sends its first location.
 const OFFLINE_AFTER_MS = 2 * 60 * 1000;
 
 /* ---------------- ZONE DATA (top collection points from the road network) ---------------- */
@@ -379,9 +380,12 @@ async function pollDrivers(){
     driverRows = await res.json();
   }catch(err){ console.error("fetch error", err); }
 
-  for(const vid of knownVehicleIds){
-    const raw = driverRows.find(r => r.vehicleId === vid);
-    const data = raw ? {
+  const seenIds = new Set();
+  for(const raw of driverRows){
+    if(!raw.vehicleId) continue;
+    const vid = raw.vehicleId;
+    seenIds.add(vid);
+    const data = {
       vehicleId: raw.vehicleId,
       driverName: raw.driverName,
       lat: raw.lat === "" ? null : Number(raw.lat),
@@ -389,9 +393,8 @@ async function pollDrivers(){
       accuracy: raw.accuracy === "" ? null : Number(raw.accuracy),
       updatedAt: Number(raw.updatedAt),
       status: raw.status
-    } : null;
+    };
 
-    if(!data){ removeVehMarker(vid); continue; }
     anyEverSeen = true;
 
     const isFresh = data.status === "active" && (Date.now() - data.updatedAt) < OFFLINE_AFTER_MS;
@@ -404,6 +407,10 @@ async function pollDrivers(){
     }
 
     cards.push({vid, data, isFresh});
+  }
+  // remove markers for vehicles that no longer appear in the sheet at all
+  for(const vid in vehMarkers){
+    if(!seenIds.has(vid)) removeVehMarker(vid);
   }
 
   emptyNote.style.display = anyEverSeen ? "none" : "block";
