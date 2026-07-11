@@ -208,6 +208,7 @@
         <button id="btnStreet">Street</button>
       </div>
       <div class="legend-title" style="margin-top:6px;">සලකුණු</div>
+      <div class="legend-row"><i style="background:#d4ff3f; border-radius:0; width:14px; height:3px;"></i>ඔබේ road data</div>
       <div class="legend-row"><i style="background:var(--amber)"></i>පොරොත්තුවෙන්</div>
       <div class="legend-row"><i style="background:var(--green)"></i>රැස් කරන ලදී</div>
       <div class="legend-row"><i style="background:var(--teal)"></i>සජීවී වාහන</div>
@@ -251,49 +252,50 @@ const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/servic
   attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
   maxZoom: 19
 });
-// Hybrid overlay: shows real road lines + place labels on top of the satellite imagery
-const hybridRoads = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 19, attribution: 'Esri'
-});
-const hybridLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 19, attribution: 'Esri'
-});
 const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',
   maxZoom: 19
 });
 satLayer.addTo(map);
-hybridRoads.addTo(map);
-hybridLabels.addTo(map);
 
 document.getElementById('btnSat').addEventListener('click', ()=>{
   map.removeLayer(streetLayer);
-  satLayer.addTo(map); hybridRoads.addTo(map); hybridLabels.addTo(map);
+  satLayer.addTo(map);
+  if(roadsLayer) roadsLayer.bringToFront();
   document.getElementById('btnSat').classList.add('active');
   document.getElementById('btnStreet').classList.remove('active');
 });
 document.getElementById('btnStreet').addEventListener('click', ()=>{
-  map.removeLayer(satLayer); map.removeLayer(hybridRoads); map.removeLayer(hybridLabels);
+  map.removeLayer(satLayer);
   streetLayer.addTo(map);
+  if(roadsLayer) roadsLayer.bringToFront();
   document.getElementById('btnStreet').classList.add('active');
   document.getElementById('btnSat').classList.remove('active');
 });
 
-/* ---------------- LOAD FULL ROAD NETWORK ---------------- */
+/* ---------------- LOAD FULL ROAD NETWORK (from user's own shapefile) ---------------- */
+let roadsLayer = null;
 fetch('roads.geojson')
-  .then(r => r.json())
+  .then(r => {
+    if(!r.ok) throw new Error('roads.geojson HTTP ' + r.status);
+    return r.json();
+  })
   .then(geo => {
-    L.geoJSON(geo, {
-      style: {color:'#e8a33d', weight: 1.6, opacity: 0.55},
+    roadsLayer = L.geoJSON(geo, {
+      style: {color:'#d4ff3f', weight: 3, opacity: 0.95},
       onEachFeature: (feature, layer) => {
         const p = feature.properties;
         layer.bindPopup(`<b>${p.name}</b><br>${p.authority} · ${p.rtype}<br>දිග: ${p.length}m`);
-        layer.on('mouseover', () => layer.setStyle({color:'#3f9c94', weight:3, opacity:0.9}));
-        layer.on('mouseout', () => layer.setStyle({color:'#e8a33d', weight:1.6, opacity:0.55}));
+        layer.on('mouseover', () => layer.setStyle({color:'#3f9c94', weight:5, opacity:1}));
+        layer.on('mouseout', () => layer.setStyle({color:'#d4ff3f', weight:3, opacity:0.95}));
       }
     }).addTo(map);
   })
-  .catch(err => console.error('roads.geojson load failed', err));
+  .catch(err => {
+    console.error('roads.geojson load failed', err);
+    document.querySelector('.map-toolbar').insertAdjacentHTML('beforeend',
+      '<div style="color:#d65a31; font-size:9.5px; margin-top:6px; max-width:160px;">⚠ roads.geojson load වුනේ නෑ — repo එකේ file එක check කරන්න</div>');
+  });
 
 /* ---------------- ZONE MARKERS ---------------- */
 function statusLabel(s){ return s === "done" ? "රැස් කළා" : "පොරොත්තුවෙන්"; }
