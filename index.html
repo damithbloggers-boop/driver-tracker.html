@@ -225,7 +225,7 @@ startBtn.addEventListener('click', ()=>{
 
   navigator.geolocation.getCurrentPosition(async (pos)=>{
     onPosition(pos);
-    setupPanel.classList.remove('live'); // hide setup
+    setupPanel.classList.remove('live');
     setupPanel.style.display = "none";
     statusPanel.classList.add('live');
     document.getElementById('sVeh').textContent = vehicleId;
