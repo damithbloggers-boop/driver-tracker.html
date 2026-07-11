@@ -122,12 +122,7 @@
 
 <div class="card setup-panel" id="setupPanel">
   <label for="vehicleId">වාහන අංකය</label>
-  <select id="vehicleId">
-    <option value="WM-04">WM-04</option>
-    <option value="WM-11">WM-11</option>
-    <option value="WM-07">WM-07</option>
-    <option value="WM-15">WM-15</option>
-  </select>
+  <input type="text" id="vehicleId" placeholder="උදා: WM-04, NP-KB-1234" autocomplete="off">
 
   <label for="driverName">රියදුරුගේ නම</label>
   <input type="text" id="driverName" placeholder="උදා: මහේෂ් පෙරේරා">
@@ -210,8 +205,13 @@ function onPositionError(err){
 }
 
 startBtn.addEventListener('click', ()=>{
-  vehicleId = document.getElementById('vehicleId').value;
+  vehicleId = document.getElementById('vehicleId').value.trim().toUpperCase();
   driverName = document.getElementById('driverName').value.trim();
+  if(!vehicleId){
+    setupMsg.textContent = "කරුණාකර වාහන අංකය ඇතුළත් කරන්න.";
+    setupMsg.className = "msg error";
+    return;
+  }
   if(!driverName){
     setupMsg.textContent = "කරුණාකර රියදුරුගේ නම ඇතුළත් කරන්න.";
     setupMsg.className = "msg error";
