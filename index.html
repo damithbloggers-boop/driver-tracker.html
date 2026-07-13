@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>රියදුරු GPS ලුහුබැඳීම</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -104,6 +105,24 @@
 
   .setup-panel.live{display:none;}
 
+  #liveMap{
+    width:100%; height:220px; border-radius:8px; overflow:hidden;
+    border:1px solid var(--line); margin-bottom:14px; display:none;
+  }
+  #liveMap.show{display:block;}
+  .leaflet-control-attribution{background:rgba(28,35,33,0.85) !important; color:var(--paper-dim) !important; font-size:8.5px !important;}
+  .leaflet-control-zoom a{background:var(--asphalt-2) !important; color:var(--paper) !important; border-color:var(--line) !important;}
+  .me-pulse{
+    width:16px; height:16px; border-radius:50%; background:var(--teal);
+    border:2px solid #0e1a18; box-shadow:0 0 0 0 rgba(63,156,148,0.7);
+    animation:mepulse 1.8s infinite;
+  }
+  @keyframes mepulse{
+    0%{box-shadow:0 0 0 0 rgba(63,156,148,0.6);}
+    70%{box-shadow:0 0 0 12px rgba(63,156,148,0);}
+    100%{box-shadow:0 0 0 0 rgba(63,156,148,0);}
+  }
+
   footer{
     margin-top:auto; text-align:center; font-size:9.5px; color:var(--paper-dim);
     font-family:'IBM Plex Mono',monospace; letter-spacing:0.04em; padding-top:16px;
@@ -132,6 +151,7 @@
 </div>
 
 <div class="card status-panel" id="statusPanel">
+  <div id="liveMap"></div>
   <div class="pulse-wrap"><div class="pulse"><div class="pulse-dot"></div></div></div>
   <div class="row"><span class="k">වාහන අංකය</span><span class="v" id="sVeh">—</span></div>
   <div class="row"><span class="k">රියදුරු</span><span class="v" id="sDriver">—</span></div>
@@ -145,6 +165,7 @@
 
 <footer>SANITATION OPS · SHARED GPS FEED · KEEP SCREEN ON WHILE ON SHIFT</footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbxNRiG-GksPRnJ8l9Kl5CtTArbM1jdv8PR35u4DXk8r57L1FGwdO1YuY1NF_xTSlkalPQ/exec";
 
@@ -160,6 +181,33 @@ let sendTimer = null;
 let currentPos = null;
 let vehicleId = null;
 let driverName = null;
+
+let liveMap = null;
+let meMarker = null;
+let pathLine = null;
+let pathPoints = [];
+
+function initLiveMap(lat, lng){
+  const mapEl = document.getElementById('liveMap');
+  mapEl.classList.add('show');
+  liveMap = L.map('liveMap', {zoomControl:true, attributionControl:true}).setView([lat, lng], 16);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri', maxZoom: 19
+  }).addTo(liveMap);
+  const icon = L.divIcon({className:'', html:'<div class="me-pulse"></div>', iconSize:[16,16], iconAnchor:[8,8]});
+  meMarker = L.marker([lat, lng], {icon}).addTo(liveMap);
+  pathLine = L.polyline([[lat,lng]], {color:'#d4ff3f', weight:3, opacity:0.85}).addTo(liveMap);
+  pathPoints.push([lat, lng]);
+  setTimeout(()=>{ liveMap.invalidateSize(); }, 200);
+}
+
+function updateLiveMap(lat, lng){
+  if(!liveMap){ initLiveMap(lat, lng); return; }
+  meMarker.setLatLng([lat, lng]);
+  pathPoints.push([lat, lng]);
+  pathLine.setLatLngs(pathPoints);
+  liveMap.panTo([lat, lng]);
+}
 
 function fmtTime(){
   return new Date().toLocaleTimeString('en-GB');
@@ -197,6 +245,7 @@ function onPosition(pos){
   document.getElementById('sCoords').textContent =
     pos.coords.latitude.toFixed(5) + "°N, " + pos.coords.longitude.toFixed(5) + "°E";
   document.getElementById('sAcc').textContent = Math.round(pos.coords.accuracy) + " m";
+  updateLiveMap(pos.coords.latitude, pos.coords.longitude);
 }
 
 function onPositionError(err){
@@ -224,12 +273,13 @@ startBtn.addEventListener('click', ()=>{
   }
 
   navigator.geolocation.getCurrentPosition(async (pos)=>{
-    onPosition(pos);
-    setupPanel.classList.remove('live');
+    setupPanel.classList.remove('live'); // hide setup
     setupPanel.style.display = "none";
     statusPanel.classList.add('live');
     document.getElementById('sVeh').textContent = vehicleId;
     document.getElementById('sDriver').textContent = driverName;
+
+    onPosition(pos);
 
     await pushLocation();
 
