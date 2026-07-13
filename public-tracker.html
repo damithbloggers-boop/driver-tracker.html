@@ -123,7 +123,7 @@
 
 <div id="map"></div>
 
-<p class="note">ස්ථානය දළ වශයෙන් (approximate) පෙන්වයි. සජීවී යාවත්කාලීන වේ.</p>
+<p class="note">ස්ථානය දළ වශයෙන් (approximate) පෙන්වයි. කහ/teal line එක රථය ගමන් කරපු මාර්ගය පෙන්වයි.</p>
 
 <div style="text-align:center; padding:0 14px 14px;">
   <button id="locateBtn" style="
@@ -203,6 +203,8 @@ function renderZoneList(){
 function roundApprox(v){ return Math.round(v * 200) / 200; }
 
 const vehMarkers = {};
+const vehTrails = {};   // polyline per vehicle
+const vehPaths = {};    // accumulated points per vehicle
 let userMarker = null;
 let userLatLng = null;
 const vehIcon = ()=> L.divIcon({className:'', html:'<div class="veh-pulse"></div>', iconSize:[18,18], iconAnchor:[9,9]});
@@ -284,6 +286,18 @@ async function pollDrivers(){
       }
       vehMarkers[vid].bindPopup(`<b>${vid}</b><br>දැනට මාර්ගයේ ක්‍රියාත්මකයි`);
       seenVehicles.push(vid);
+
+      // update trail (only add a point if it's different from the last one)
+      if(!vehPaths[vid]) vehPaths[vid] = [];
+      const last = vehPaths[vid][vehPaths[vid].length - 1];
+      if(!last || last[0] !== aLat || last[1] !== aLng){
+        vehPaths[vid].push([aLat, aLng]);
+      }
+      if(!vehTrails[vid]){
+        vehTrails[vid] = L.polyline(vehPaths[vid], {color:'#3f9c94', weight:3, opacity:0.7}).addTo(map);
+      }else{
+        vehTrails[vid].setLatLngs(vehPaths[vid]);
+      }
     }else if(vehMarkers[vid]){
       map.removeLayer(vehMarkers[vid]);
       delete vehMarkers[vid];
