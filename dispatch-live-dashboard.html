@@ -416,18 +416,22 @@ async function pollDrivers(){
   emptyNote.style.display = anyEverSeen ? "none" : "block";
 
   vehListEl.innerHTML = "";
-  cards.forEach(({vid, data, isFresh})=>{
+  const liveCards = cards.filter(c => c.isFresh);
+  if(liveCards.length === 0){
+    vehListEl.innerHTML = `<p class="empty-note">දැනට කිසිම වාහනයක් සජීවී නෑ.</p>`;
+  }
+  liveCards.forEach(({vid, data})=>{
     const card = document.createElement('div');
-    card.className = "vehicle-card" + (isFresh ? "" : " offline");
+    card.className = "vehicle-card";
     card.innerHTML = `
       <div class="vehicle-top">
-        <span class="vehicle-id"><span class="dot ${isFresh?'live':'off'}"></span>${vid}</span>
+        <span class="vehicle-id"><span class="dot live"></span>${vid}</span>
         <span style="font-size:10px;color:var(--paper-dim)">${data.driverName || '—'}</span>
       </div>
       <div class="vehicle-gps">${data.lat!=null ? data.lat.toFixed(5)+"°N, "+data.lng.toFixed(5)+"°E" : "GPS නොමැත"}</div>
-      <div class="vehicle-meta">${isFresh ? "සජීවී · " : "නොබැඳී · "}${timeAgo(data.updatedAt)}${data.accuracy ? " · ±"+Math.round(data.accuracy)+"m" : ""}</div>
+      <div class="vehicle-meta">සජීවී · ${timeAgo(data.updatedAt)}${data.accuracy ? " · ±"+Math.round(data.accuracy)+"m" : ""}</div>
     `;
-    if(isFresh && data.lat != null){
+    if(data.lat != null){
       card.style.cursor = "pointer";
       card.addEventListener('click', ()=> map.setView([data.lat, data.lng], 15));
     }
