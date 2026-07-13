@@ -158,7 +158,7 @@
 
 <div id="map"></div>
 
-<p class="note">ස්ථානය දළ වශයෙන් (approximate) පෙන්වයි. කහ/teal line එක රථය ගමන් කරපු මාර්ගය පෙන්වයි.</p>
+<p class="note">වාහනයේ සජීවී ස්ථානය මෙතන පෙන්වයි. teal line එක ගමන් කරපු මාර්ගය පෙන්වයි.</p>
 
 <div style="text-align:center; padding:0 14px 14px;">
   <button id="locateBtn" style="
@@ -375,7 +375,7 @@ async function pollDrivers(){
 
     if(isFresh && lat != null){
       activeCount++;
-      const aLat = roundApprox(lat), aLng = roundApprox(lng);
+      const aLat = lat, aLng = lng; // exact GPS position (driver name is still hidden in the popup)
       if(vehMarkers[vid]){
         vehMarkers[vid].setLatLng([aLat, aLng]);
       }else{
