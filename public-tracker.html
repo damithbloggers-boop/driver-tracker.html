@@ -101,6 +101,41 @@
   .badge.pending{background:var(--amber-dim); color:var(--amber);}
   .badge.done{background:var(--green-dim); color:var(--green);}
 
+  .proximity-card{
+    margin:0 14px 14px; padding:16px; border-radius:10px;
+    background:var(--asphalt-2); border:1px solid var(--line);
+    display:none;
+  }
+  .proximity-card.show{display:block;}
+  .proximity-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+  .proximity-vehicle{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--paper-dim); letter-spacing:0.05em;}
+  .proximity-trend{font-size:11px; font-weight:600; display:flex; align-items:center; gap:4px;}
+  .proximity-trend.closer{color:var(--green);}
+  .proximity-trend.farther{color:var(--amber);}
+  .proximity-trend.same{color:var(--paper-dim);}
+  .proximity-dist{
+    font-family:'IBM Plex Mono',monospace; font-size:32px; font-weight:600; color:var(--paper);
+    display:flex; align-items:baseline; gap:6px; margin-bottom:12px;
+  }
+  .proximity-dist small{font-size:14px; color:var(--paper-dim); font-weight:400;}
+  .proximity-bar-track{
+    width:100%; height:10px; border-radius:5px; background:var(--asphalt);
+    border:1px solid var(--line); overflow:hidden; position:relative;
+  }
+  .proximity-bar-fill{
+    height:100%; border-radius:5px;
+    background:linear-gradient(90deg, var(--amber), var(--teal), var(--green));
+    transition:width 1s ease-out;
+  }
+  .proximity-bar-labels{
+    display:flex; justify-content:space-between; margin-top:6px;
+    font-size:9.5px; color:var(--paper-dim); font-family:'IBM Plex Mono',monospace;
+  }
+  .proximity-close-badge{
+    display:inline-block; margin-top:10px; padding:5px 12px; border-radius:14px;
+    background:var(--green-dim); color:var(--green); font-size:11.5px; font-weight:600;
+  }
+
   footer{
     text-align:center; padding:14px; font-size:9.5px; color:var(--paper-dim);
     font-family:'IBM Plex Mono',monospace; letter-spacing:0.04em; border-top:1px solid var(--line);
@@ -130,7 +165,19 @@
     background:var(--teal); color:#0e1a18; border:none; border-radius:20px;
     padding:10px 20px; font-family:'Noto Sans Sinhala',sans-serif; font-weight:600;
     font-size:13px; cursor:pointer;">📍 මගේ ස්ථානය පෙන්වන්න</button>
-  <p class="note" id="distanceNote" style="display:none;"></p>
+</div>
+
+<div class="proximity-card" id="proximityCard">
+  <div class="proximity-top">
+    <span class="proximity-vehicle" id="proximityVehicle">—</span>
+    <span class="proximity-trend" id="proximityTrend"></span>
+  </div>
+  <div class="proximity-dist"><span id="proximityDistValue">—</span><small>km ඈතින්</small></div>
+  <div class="proximity-bar-track">
+    <div class="proximity-bar-fill" id="proximityBarFill" style="width:0%"></div>
+  </div>
+  <div class="proximity-bar-labels"><span>ඈත</span><span>ළඟ</span></div>
+  <div id="proximityCloseBadge"></div>
 </div>
 
 <div class="list-wrap">
@@ -238,21 +285,71 @@ document.getElementById('locateBtn').addEventListener('click', ()=>{
   }, {enableHighAccuracy:true, timeout:15000});
 });
 
+let prevDistanceKm = null;
+let connectLine = null;
+const MAX_RANGE_KM = 5; // bar visualization range
+
 function updateDistanceNote(){
-  const note = document.getElementById('distanceNote');
+  const card = document.getElementById('proximityCard');
   if(!userLatLng || Object.keys(vehMarkers).length === 0){
-    note.style.display = "none";
+    card.classList.remove('show');
+    if(connectLine){ map.removeLayer(connectLine); connectLine = null; }
     return;
   }
-  let nearest = null, nearestDist = Infinity;
+  let nearest = null, nearestDist = Infinity, nearestLL = null;
   for(const vid in vehMarkers){
     const ll = vehMarkers[vid].getLatLng();
     const d = haversineKm(userLatLng.lat, userLatLng.lng, ll.lat, ll.lng);
-    if(d < nearestDist){ nearestDist = d; nearest = vid; }
+    if(d < nearestDist){ nearestDist = d; nearest = vid; nearestLL = ll; }
   }
-  if(nearest){
-    note.style.display = "block";
-    note.textContent = `🚛 ළඟම වාහනය (${nearest}) ඔබෙන් දළ වශයෙන් ${nearestDist.toFixed(1)} km දුරින්`;
+  if(!nearest) return;
+
+  card.classList.add('show');
+  document.getElementById('proximityVehicle').textContent = `🚛 ${nearest}`;
+
+  // distance display
+  const distEl = document.getElementById('proximityDistValue');
+  const distLabel = card.querySelector('.proximity-dist small');
+  if(nearestDist < 1){
+    distEl.textContent = Math.round(nearestDist * 1000);
+    distLabel.textContent = "m ඈතින්";
+  }else{
+    distEl.textContent = nearestDist.toFixed(1);
+    distLabel.textContent = "km ඈතින්";
+  }
+
+  // proximity bar (closer = more filled)
+  const pct = Math.max(0, Math.min(100, 100 - (nearestDist / MAX_RANGE_KM) * 100));
+  document.getElementById('proximityBarFill').style.width = pct + "%";
+
+  // trend (closer / farther / same since last check)
+  const trendEl = document.getElementById('proximityTrend');
+  if(prevDistanceKm !== null){
+    const diff = nearestDist - prevDistanceKm;
+    if(diff < -0.02){
+      trendEl.textContent = "↓ ළං වෙනවා";
+      trendEl.className = "proximity-trend closer";
+    }else if(diff > 0.02){
+      trendEl.textContent = "↑ ඈත් වෙනවා";
+      trendEl.className = "proximity-trend farther";
+    }else{
+      trendEl.textContent = "— වෙනසක් නෑ";
+      trendEl.className = "proximity-trend same";
+    }
+  }
+  prevDistanceKm = nearestDist;
+
+  // close badge
+  const badgeEl = document.getElementById('proximityCloseBadge');
+  badgeEl.innerHTML = nearestDist < 0.3 ? `<span class="proximity-close-badge">📍 ළඟටම ආවා!</span>` : "";
+
+  // connecting line between user and nearest vehicle
+  if(connectLine){
+    connectLine.setLatLngs([[userLatLng.lat, userLatLng.lng], nearestLL]);
+  }else{
+    connectLine = L.polyline([[userLatLng.lat, userLatLng.lng], nearestLL], {
+      color:'#4a90e2', weight:2, opacity:0.6, dashArray:'6 6'
+    }).addTo(map);
   }
 }
 
