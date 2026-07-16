@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>කසළ එකතු කිරීමේ මධ්‍යස්ථානය — සජීවී GPS අධීක්ෂණය</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -218,7 +218,7 @@
 
 <footer>SANITATION OPS DASHBOARD · 1504 ROAD SEGMENTS LOADED · LIVE GPS POLLS EVERY 5S</footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ---------------- CONFIG ---------------- */
 const API_URL = "https://script.google.com/macros/s/AKfycbxNRiG-GksPRnJ8l9Kl5CtTArbM1jdv8PR35u4DXk8r57L1FGwdO1YuY1NF_xTSlkalPQ/exec";
@@ -430,10 +430,18 @@ async function pollDrivers(){
       </div>
       <div class="vehicle-gps">${data.lat!=null ? data.lat.toFixed(5)+"°N, "+data.lng.toFixed(5)+"°E" : "GPS නොමැත"}</div>
       <div class="vehicle-meta">සජීවී · ${timeAgo(data.updatedAt)}${data.accuracy ? " · ±"+Math.round(data.accuracy)+"m" : ""}</div>
+      ${data.lat!=null ? `<button class="locate-btn" style="
+        margin-top:8px; width:100%; background:var(--teal); color:#0e1a18; border:none;
+        border-radius:5px; padding:7px; font-family:'Noto Sans Sinhala',sans-serif; font-weight:600;
+        font-size:11.5px; cursor:pointer;">🎯 Map එකේ බලන්න</button>` : ''}
     `;
     if(data.lat != null){
-      card.style.cursor = "pointer";
-      card.addEventListener('click', ()=> map.setView([data.lat, data.lng], 15));
+      const btn = card.querySelector('.locate-btn');
+      btn.addEventListener('click', (ev)=>{
+        ev.stopPropagation();
+        map.setView([data.lat, data.lng], 16);
+        if(vehMarkers[vid]) vehMarkers[vid].openPopup();
+      });
     }
     vehListEl.appendChild(card);
   });
